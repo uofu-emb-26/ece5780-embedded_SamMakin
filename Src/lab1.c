@@ -15,14 +15,16 @@ void lab1_main(void)
 
     HAL_GPIO_Init(GPIOC, &initStr);
 
-    while (1)
-    {
-        HAL_Delay(300);
-        HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9);
-         HAL_Delay(50);
-        HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9);
-         HAL_Delay(50);
-        HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9);
+while (1)
+{
+    // LED on PC8 ON, PC9 OFF
+    GPIOC->BSRR = GPIO_PIN_8;           // set PC8
+    GPIOC->BSRR = (GPIO_PIN_9 << 16);   // reset PC9
+    HAL_Delay(100);
 
-    }
+    // LED on PC8 OFF, PC9 ON
+    GPIOC->BSRR = GPIO_PIN_9;           // set PC9
+    GPIOC->BSRR = (GPIO_PIN_8 << 16);   // reset PC8
+    HAL_Delay(100);
+}
 }
