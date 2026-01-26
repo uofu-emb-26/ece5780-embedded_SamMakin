@@ -14,6 +14,16 @@ void Error_Handler(void)
   }
 }
 
+//Clock
+void HAL_RCC_GPIOC_CLK_Enable (void)
+{
+      // Enable GPIOC clock on AHB bus: RCC->AHBENR bit for GPIOCEN
+    RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
+
+    // Optional: read-back to ensure write completes before peripheral access
+    (void)RCC->AHBENR;
+}
+
 /**
   * @brief  System Clock Configuration
   *         The system Clock is configured as follow :
