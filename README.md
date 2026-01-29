@@ -105,3 +105,26 @@ https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools
 # Drivers
 This repository contains libraries copied from https://github.com/STMicroelectronics/STM32CubeF0 at commit 165396863a295fe41640f721f8b8ba276572e083.
 License information for these libraries is located inside library directories.
+
+# Student Added
+
+# Lab 1 Checkoffs (GPIO)
+
+This repo contains my Lab 1 solutions for the ECE 5780 checkoffs. The code is in `Src/lab1.c` and uses GPIOC (PC6–PC9 LEDs) and GPIOA (PA0 button).
+
+## Checkoff 1 – Register-level blink (PC8/PC9)
+Goal: demonstrate direct GPIO register control.
+- Uses `GPIOC->BSRR` to SET and RESET PC8 and PC9
+- Alternates PC8 and PC9 with delays
+
+## Checkoff 2 – HAL GPIO control + verification
+Goal: demonstrate GPIO output using HAL functions and verify results.
+- Uses `HAL_GPIO_WritePin()` to drive PC6–PC9 (Red/Blue/Orange/Green)
+- Turns all LEDs off first, then steps through each LED
+- Uses `assert()` to confirm the expected bits change in `GPIOC->ODR`
+
+## Checkoff 3 – Button-controlled LED state machine (PA0)
+Goal: use PA0 as an input and advance an LED pattern on each button press.
+- PA0 is configured as input by clearing `GPIOA->MODER` and `GPIOA->PUPDR`
+- Rising-edge detection + simple debounce (`HAL_Delay(20)`)
+- Each press increments a stage counter (`case3Stage`) and updates which LED is on
