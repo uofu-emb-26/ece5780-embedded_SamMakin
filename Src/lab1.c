@@ -1,11 +1,22 @@
 #include <stm32f0xx_hal.h>
 #include <assert.h>
 
+/* ---------- Checkoff case enum (replaces magic numbers) ---------- */
+typedef enum {
+    CHECKOFF_CASE_1 = 1,
+    CHECKOFF_CASE_2 = 2,
+    CHECKOFF_CASE_3 = 3
+} CheckoffCase_t;
+/* ---------------------------------------------------------------- */
+
 static uint8_t case3Stage = 0;
+
+void case3running(void);
 
 void lab1_main(void)
 {
-    static int checkOffCase = 2;
+    static CheckoffCase_t checkOffCase = CHECKOFF_CASE_2;
+
     HAL_Init();
 
     HAL_RCC_GPIOC_CLK_Enable();
@@ -14,7 +25,7 @@ void lab1_main(void)
     // Set PA0 as input: MODER0[1:0] = 00
     GPIOA->MODER &= ~(0x3u << (0 * 2));
 
-    //Maybe no pull up?
+    // Maybe no pull up?
     GPIOA->PUPDR &= ~(0x3u << (0 * 2));
 
     GPIO_InitTypeDef initStr = {
@@ -48,7 +59,7 @@ void lab1_main(void)
 
         switch(checkOffCase)
         {
-            case(1):
+            case CHECKOFF_CASE_1:
                 // LED on PC8 ON, PC9 OFF
                 GPIOC->BSRR = GPIO_PIN_8;           // set PC8
                 GPIOC->BSRR = (GPIO_PIN_9 << 16);   // reset PC9
@@ -60,7 +71,7 @@ void lab1_main(void)
                 HAL_Delay(100);
                 break;
 
-            case(2):
+            case CHECKOFF_CASE_2:
                 // Turn all LEDs off first
                 HAL_GPIO_WritePin(GPIOC,
                     GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9,
@@ -98,7 +109,7 @@ void lab1_main(void)
                 assert((GPIOC->ODR & GPIO_PIN_9) == 0u);
                 break;
 
-            case(3):
+            case CHECKOFF_CASE_3:
                 case3running();
                 break;
 
@@ -132,12 +143,11 @@ void case3running(void)
             // Red
             HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6, GPIO_PIN_SET);
             assert((GPIOC->ODR & GPIO_PIN_6) == GPIO_PIN_6);
-
             break;
 
         case(1):
             // Blue
-            HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6, GPIO_PIN_RESET);// need to turn off pin
+            HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6, GPIO_PIN_RESET);
             assert((GPIOC->ODR & GPIO_PIN_6) == 0u);
             HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
             assert((GPIOC->ODR & GPIO_PIN_7) == GPIO_PIN_7);
@@ -158,7 +168,6 @@ void case3running(void)
             HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);
             assert((GPIOC->ODR & GPIO_PIN_9) == GPIO_PIN_9);
 
-            // Reset green before looping
             HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_RESET);
             assert((GPIOC->ODR & GPIO_PIN_9) == 0u);
             break;
@@ -167,4 +176,3 @@ void case3running(void)
             break;
     }
 }
-
