@@ -31,3 +31,26 @@ void My_HAL_GPIO_TogglePin(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
 {
 }
 */
+void hal_gpio_init_button_pa0_pulldown(void)
+{
+    // Enable GPIOA clock 
+    HAL_RCC_GPIOA_CLK_Enable();
+
+    GPIO_InitTypeDef init = {
+        .Pin   = GPIO_PIN_0,
+        .Mode  = GPIO_MODE_INPUT,
+        .Pull  = GPIO_PULLDOWN,
+        .Speed = GPIO_SPEED_FREQ_LOW
+    };
+
+    HAL_GPIO_Init(GPIOA, &init);
+}
+
+void hal_exti0_enable_rising(void)
+{
+    // Unmask EXTI0 
+    EXTI->IMR |= (1u << 0);
+
+    // Rising edge trigger
+    EXTI->RTSR |= (1u << 0);
+}

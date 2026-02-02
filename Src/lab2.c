@@ -22,6 +22,17 @@ void lab2_main(void)
 
     // Set green LED HIGH
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);
+
+    // Enable peripheral interuprts
+    hal_gpio_init_button_pa0_pulldown();
+
+    assert((EXTI->IMR  & (1u << 0)) == 0);
+    assert((EXTI->RTSR & (1u << 0)) == 0);
+
+    hal_exti0_enable_rising();
+
+    assert((EXTI->IMR  & (1u << 0)) != 0);
+    assert((EXTI->RTSR & (1u << 0)) != 0);
     
     while (1)
         {

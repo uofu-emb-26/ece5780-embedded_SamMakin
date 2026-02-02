@@ -1,7 +1,7 @@
 #include <stm32f0xx_hal.h>
 #include <assert.h>
 
-/* ---------- Checkoff case enum (replaces magic numbers) ---------- */
+/* ---------- Checkoff case enum---------- */
 typedef enum {
     CHECKOFF_CASE_1 = 1,
     CHECKOFF_CASE_2 = 2,
