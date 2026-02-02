@@ -33,6 +33,16 @@ void lab2_main(void)
 
     assert((EXTI->IMR  & (1u << 0)) != 0);
     assert((EXTI->RTSR & (1u << 0)) != 0);
+
+    // 2.3
+    uint32_t before = (SYSCFG->EXTICR[0] & 0xFu);
+    assert(before <= 0x7u);   // sanity: port selector is in a valid range
+
+    // Route PA0 to EXTI0
+    hal_syscfg_route_pa0_to_exti0();
+
+    assert((SYSCFG->EXTICR[0] & 0xFu) == 0x0u);// Check PA0 -> EXTI0
+
     
     while (1)
         {
