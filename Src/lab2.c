@@ -43,6 +43,11 @@ void lab2_main(void)
 
     assert((SYSCFG->EXTICR[0] & 0xFu) == 0x0u);// Check PA0 -> EXTI0
 
+
+    // 2.4
+    NVIC_SetPriority(EXTI0_1_IRQn, 1);
+    NVIC_EnableIRQ(EXTI0_1_IRQn);
+
     
     while (1)
         {

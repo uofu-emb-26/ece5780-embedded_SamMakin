@@ -57,7 +57,7 @@ void hal_exti0_enable_rising(void)
 void hal_syscfg_route_pa0_to_exti0(void)
 {
     // Enable SYSCFG peripheral clock
-    __HALmake _RCC_SYSCFG_CLK_ENABLE();
+    __HAL_RCC_SYSCFG_CLK_ENABLE();
 
     // Route PA0 to EXTI0 
     // EXTI0 selection is bits [3:0] of EXTICR[0]
