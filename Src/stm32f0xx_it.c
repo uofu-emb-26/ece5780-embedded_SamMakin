@@ -73,6 +73,15 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
     HAL_IncTick();
+
+    static uint16_t secs = 0;
+
+    secs++;
+    if (secs >= 200)
+    {
+        secs = 0;
+        GPIOC->ODR ^= (1u << 8);   // toggle blue LEDgit status
+    }
 }
 
 /******************************************************************************/
