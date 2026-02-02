@@ -10,10 +10,24 @@ void lab2_main(void)
     HAL_RCC_GPIOC_CLK_Enable();
     HAL_RCC_GPIOA_CLK_Enable();
 
-        while (1)
-    {
-        // main loop work (red LED toggle later)
-    }
+        // Configure LED pins
+    GPIO_InitTypeDef led_init = {
+        .Pin   = GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9,
+        .Mode  = GPIO_MODE_OUTPUT_PP,
+        .Pull  = GPIO_NOPULL,
+        .Speed = GPIO_SPEED_FREQ_LOW
+    };
+
+    HAL_GPIO_Init(GPIOC, &led_init);
+
+    // Set green LED HIGH
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);
+    
+    while (1)
+        {
+                HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);  // red LED 
+                  HAL_Delay(500);
+        }
 
 
 }

@@ -80,7 +80,7 @@ void SysTick_Handler(void)
     if (secs >= 200)
     {
         secs = 0;
-        GPIOC->ODR ^= (1u << 8);   // toggle blue LEDgit status
+        GPIOC->ODR ^= (1u << 7);   // toggle blue LEDgit status
     }
 }
 
