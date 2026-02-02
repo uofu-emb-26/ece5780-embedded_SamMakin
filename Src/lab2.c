@@ -57,3 +57,12 @@ void lab2_main(void)
 
 
 }
+
+void EXTI0_1_IRQHandler(void)
+{
+        // Toggle orange (PC8) and green (PC9)
+    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9);
+
+    // Clear pending flag for EXTI line 0 "task completed"
+    EXTI->PR = (1u << 0);
+}
