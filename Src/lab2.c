@@ -45,8 +45,11 @@ void lab2_main(void)
 
 
     // 2.4
-    NVIC_SetPriority(EXTI0_1_IRQn, 1);
+    NVIC_SetPriority(EXTI0_1_IRQn, 3);
     NVIC_EnableIRQ(EXTI0_1_IRQn);
+
+    //2.7 
+    NVIC_SetPriority(SysTick_IRQn, 2);
 
     
     while (1)
@@ -60,9 +63,19 @@ void lab2_main(void)
 
 void EXTI0_1_IRQHandler(void)
 {
-        // Toggle orange (PC8) and green (PC9)
+    // Toggle once right when interrupt starts
     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9);
 
-    // Clear pending flag for EXTI line 0 "task completed"
+    // Long-running delay (bad practice, but for demo)
+    volatile uint32_t i = 0;
+    for (i = 0; i < 1500000u; i++)
+    {
+        __asm volatile ("nop");
+    }
+
+    // Toggle again after the delay
+    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9);
+
+    // Clear pending flag for EXTI line 0
     EXTI->PR = (1u << 0);
 }
