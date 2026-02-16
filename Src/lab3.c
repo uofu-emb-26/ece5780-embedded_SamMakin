@@ -10,6 +10,12 @@ void lab3_main(void)
     __HAL_RCC_TIM2_CLK_ENABLE();
     __HAL_RCC_TIM3_CLK_ENABLE();
 
+    //LED alt funciton
+    GPIOC->MODER &= ~(GPIO_MODER_MODER6_Msk | GPIO_MODER_MODER7_Msk);
+    GPIOC->MODER |=  (GPIO_MODER_MODER6_1   | GPIO_MODER_MODER7_1);
+
+    GPIOC->AFR[0] &= ~((0xF << (6 * 4)) | (0xF << (7 * 4)));
+
     // Pin defs
     GPIO_InitTypeDef gpio = {0};
     gpio.Pin   = GPIO_PIN_8 | GPIO_PIN_9;
@@ -62,6 +68,11 @@ void lab3_main(void)
     TIM3->CCR2 = 200;
 
     TIM3->CR1 |= TIM_CR1_CEN;
+
+    //3.3
+   
+
+
 }
 
 
