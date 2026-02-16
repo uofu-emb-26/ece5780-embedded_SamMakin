@@ -1,7 +1,7 @@
 #include "main.h"
 #include <stm32f0xx_hal.h>
 
-#define ACTIVE_LAB 2   // ← change this to 1–7
+#define ACTIVE_LAB 3  
 
 int main(void)
 {
@@ -36,7 +36,7 @@ int main(void)
             break;
 
         default:
-            // Trap if an invalid lab number is selected
+            
             while (1) { }
     }
 }

@@ -36,7 +36,7 @@ void lab2_main(void)
 
     // 2.3
     uint32_t before = (SYSCFG->EXTICR[0] & 0xFu);
-    assert(before <= 0x7u);   // sanity: port selector is in a valid range
+    assert(before <= 0x7u);   // port selector is in a valid range
 
     // Route PA0 to EXTI0
     hal_syscfg_route_pa0_to_exti0();
@@ -45,7 +45,7 @@ void lab2_main(void)
 
 
     // 2.4
-    NVIC_SetPriority(EXTI0_1_IRQn, 3);
+    NVIC_SetPriority(EXTI0_1_IRQn, 1);
     NVIC_EnableIRQ(EXTI0_1_IRQn);
 
     //2.7 
