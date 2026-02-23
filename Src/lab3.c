@@ -61,17 +61,40 @@ void lab3_main(void)
     TIM3->CCMR1 |= TIM_CCMR1_OC2PE;
 
     //connect pins
-    TIM3->CCER |= TIM_CCER_CC1E;
-    TIM3->CCER |= TIM_CCER_CC2E;
+  TIM3->CCER |= TIM_CCER_CC1E;
+TIM3->CCER |= TIM_CCER_CC2E;
 
-    TIM3->CCR1 = 200;
-    TIM3->CCR2 = 200;
+uint16_t StartingVal1 = 0;
+uint16_t StartingVal2 = 1000;
+
+TIM3->CCR2 = StartingVal1;
+TIM3->CCR1 = StartingVal2;
+
+TIM3->EGR |= TIM_EGR_UG;
+TIM3->SR  &= ~TIM_SR_UIF;
+
+TIM3->CR1 |= TIM_CR1_CEN;
+
+while (1)
+{
+    if (StartingVal1 < 1000) {
+        StartingVal1++;
+    } else {
+        StartingVal1 = 0;
+    }
+    TIM3->CCR2 = StartingVal1;
+
+    if (StartingVal2 > 0) {
+        StartingVal2--;
+    } else {
+        StartingVal2 = 1000;
+    }
+    TIM3->CCR1 = StartingVal2;
+
+    HAL_Delay(5);
+}
 
     TIM3->CR1 |= TIM_CR1_CEN;
-
-    //3.3
-   
-
 
 }
 
