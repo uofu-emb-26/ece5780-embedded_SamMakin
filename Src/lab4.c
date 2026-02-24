@@ -24,6 +24,12 @@ static void usart3_init(void)
     USART3->CR1 |= USART_CR1_UE;
 }
 
+static void usart3_tx_char(char c)
+{
+    while ((USART3->ISR & USART_ISR_TXE) == 0) { }
+    USART3->TDR = (uint8_t)c;
+}
+
 void lab4_main(void)
 {
     HAL_Init();
@@ -31,5 +37,9 @@ void lab4_main(void)
     gpio_usart3_init();
     usart3_init();
 
-    while (1) { }
+    while (1)
+    {
+        usart3_tx_char('A');
+        for (volatile uint32_t i = 0; i < 200000; i++) { }
+    }
 }
