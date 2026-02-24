@@ -19,16 +19,24 @@ static void usart3_init(void)
     __HAL_RCC_USART3_CLK_ENABLE();
 
     USART3->CR1 = 0;
-    USART3->BRR = (uint16_t)(HAL_RCC_GetHCLKFreq() / UART_BAUD);
-    USART3->CR1 |= USART_CR1_TE | USART_CR1_RE;
+    USART3->BRR = (uint16_t)(HAL_RCC_GetHCLKFreq() / UART_BAUD); //Clock freq divided by set bit rate
+    USART3->CR1 |= USART_CR1_TE | USART_CR1_RE; // Enable tranmistter and reciever 
     USART3->CR1 |= USART_CR1_UE;
 }
 
+// First checkpoint (AAAAAAAAAAAAAAAAAAAAAA)
 static void usart3_tx_char(char c)
 {
     while ((USART3->ISR & USART_ISR_TXE) == 0) { }
     USART3->TDR = (uint8_t)c;
 }
+
+static char usart3_rx_char(void)
+{
+    while ((USART3->ISR & USART_ISR_RXNE) == 0) { }
+    return (char)(USART3->RDR);
+}
+
 
 void lab4_main(void)
 {
@@ -39,7 +47,7 @@ void lab4_main(void)
 
     while (1)
     {
-        usart3_tx_char('A');
-        for (volatile uint32_t i = 0; i < 200000; i++) { }
+        char c = usart3_rx_char();
+        usart3_tx_char(c);
     }
 }
