@@ -3,6 +3,9 @@
 
 #define UART_BAUD 115200u
 
+static volatile char g_rx_char = 0;
+static volatile uint8_t g_rx_ready = 0;
+
 static void gpio_usart3_init(void)
 {
     __HAL_RCC_GPIOB_CLK_ENABLE();
@@ -19,24 +22,29 @@ static void usart3_init(void)
     __HAL_RCC_USART3_CLK_ENABLE();
 
     USART3->CR1 = 0;
-    USART3->BRR = (uint16_t)(HAL_RCC_GetHCLKFreq() / UART_BAUD); //Clock freq divided by set bit rate
-    USART3->CR1 |= USART_CR1_TE | USART_CR1_RE; // Enable tranmistter and reciever 
+    USART3->BRR = (uint16_t)(HAL_RCC_GetHCLKFreq() / UART_BAUD);
+    USART3->CR1 |= USART_CR1_TE | USART_CR1_RE;
+    USART3->CR1 |= USART_CR1_RXNEIE;
     USART3->CR1 |= USART_CR1_UE;
+
+    NVIC_SetPriority(USART3_4_IRQn, 1);
+    NVIC_EnableIRQ(USART3_4_IRQn);
 }
 
-// First checkpoint (AAAAAAAAAAAAAAAAAAAAAA)
 static void usart3_tx_char(char c)
 {
     while ((USART3->ISR & USART_ISR_TXE) == 0) { }
     USART3->TDR = (uint8_t)c;
 }
 
-static char usart3_rx_char(void)
+void USART3_4_IRQHandler(void)
 {
-    while ((USART3->ISR & USART_ISR_RXNE) == 0) { }
-    return (char)(USART3->RDR);
+    if ((USART3->ISR & USART_ISR_RXNE) != 0)
+    {
+        g_rx_char = (char)USART3->RDR;
+        g_rx_ready = 1;
+    }
 }
-
 
 void lab4_main(void)
 {
@@ -47,7 +55,10 @@ void lab4_main(void)
 
     while (1)
     {
-        char c = usart3_rx_char();
-        usart3_tx_char(c);
+        if (g_rx_ready)
+        {
+            g_rx_ready = 0;
+            usart3_tx_char(g_rx_char);
+        }
     }
 }
