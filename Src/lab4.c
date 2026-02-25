@@ -3,18 +3,18 @@
 
 #define UART_BAUD 115200u
 
-static volatile char g_rx_char = 0; //Recieved Char
-static volatile uint8_t g_rx_ready = 0; //flag bit
+static volatile char g_rx_char = 0;
+static volatile uint8_t g_rx_ready = 0;
 
 static void gpio_usart3_init(void)
 {
     __HAL_RCC_GPIOB_CLK_ENABLE();
 
-    GPIOB->MODER &= ~((3u << (10 * 2)) | (3u << (11 * 2))); // clear mode bits
-    GPIOB->MODER |=  ((2u << (10 * 2)) | (2u << (11 * 2))); // set AF mode (10)
+    GPIOB->MODER &= ~((3u << (10 * 2)) | (3u << (11 * 2)));
+    GPIOB->MODER |=  ((2u << (10 * 2)) | (2u << (11 * 2)));
 
-    GPIOB->AFR[1] &= ~((0xFu << ((10 - 8) * 4)) | (0xFu << ((11 - 8) * 4))); // clear AF
-    GPIOB->AFR[1] |=  ((4u   << ((10 - 8) * 4)) | (4u   << ((11 - 8) * 4))); // AF4 = USART3
+    GPIOB->AFR[1] &= ~((0xFu << ((10 - 8) * 4)) | (0xFu << ((11 - 8) * 4)));
+    GPIOB->AFR[1] |=  ((4u   << ((10 - 8) * 4)) | (4u   << ((11 - 8) * 4)));
 }
 
 static void usart3_init(void)
@@ -24,11 +24,9 @@ static void usart3_init(void)
     USART3->CR1 = 0;
     USART3->BRR = (uint16_t)(HAL_RCC_GetHCLKFreq() / UART_BAUD);
 
-    USART3->CR1 |= USART_CR1_TE | USART_CR1_RE;  // Enable transmitter and receiver
-
-    USART3->CR1 |= USART_CR1_RXNEIE;  // Enable RX-not-empty interrupt
-
-    USART3->CR1 |= USART_CR1_UE; // Enable USART peripheral
+    USART3->CR1 |= USART_CR1_TE | USART_CR1_RE;
+    USART3->CR1 |= USART_CR1_RXNEIE;
+    USART3->CR1 |= USART_CR1_UE;
 
     NVIC_SetPriority(USART3_4_IRQn, 1);
     NVIC_EnableIRQ(USART3_4_IRQn);
@@ -40,6 +38,11 @@ static void usart3_tx_char(char c)
     USART3->TDR = (uint8_t)c;
 }
 
+static void usart3_tx_str(const char *s)
+{
+    while (*s) { usart3_tx_char(*s++); }
+}
+
 void USART3_4_IRQHandler(void)
 {
     if ((USART3->ISR & USART_ISR_RXNE) != 0)
@@ -49,7 +52,6 @@ void USART3_4_IRQHandler(void)
     }
 }
 
-// Setup 
 static void leds_init(void)
 {
     __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -77,6 +79,17 @@ static void led_apply(char which, char action)
     else if (action == 't') HAL_GPIO_TogglePin(GPIOC, pin);
 }
 
+static void cmd_prompt(void)
+{
+    usart3_tx_str("CMD? ");
+}
+
+static void badKeyError(void)
+{
+    usart3_tx_str("\r\nERR: bad cmd (use r/g + 0/1/t)\r\n");
+    cmd_prompt();
+}
+
 void lab4_main(void)
 {
     HAL_Init();
@@ -87,6 +100,8 @@ void lab4_main(void)
 
     char first = 0;
 
+    cmd_prompt();
+
     while (1)
     {
         if (!g_rx_ready) continue;
@@ -95,6 +110,8 @@ void lab4_main(void)
         char c = g_rx_char;
 
         if (c == '\r' || c == '\n') continue;
+
+        usart3_tx_char(c);
 
         if (first == 0)
         {
@@ -107,6 +124,12 @@ void lab4_main(void)
             if ((first == 'g' || first == 'r') && (second == '0' || second == '1' || second == 't'))
             {
                 led_apply(first, second);
+                usart3_tx_str("\r\n");
+                cmd_prompt();
+            }
+            else
+            {
+                badKeyError();
             }
 
             first = 0;
