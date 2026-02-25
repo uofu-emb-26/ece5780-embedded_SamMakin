@@ -57,21 +57,19 @@ static void leds_init(void)
     __HAL_RCC_GPIOC_CLK_ENABLE();
 
     GPIO_InitTypeDef gpio = {0};
-    gpio.Pin   = GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9;
+    gpio.Pin   = GPIO_PIN_8 | GPIO_PIN_9;
     gpio.Mode  = GPIO_MODE_OUTPUT_PP;
     gpio.Pull  = GPIO_NOPULL;
     gpio.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOC, &gpio);
 
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
 }
 
 static uint16_t led_pin_from_color(char which)
 {
-    if (which == 'b') return GPIO_PIN_6;
-    if (which == 'r') return GPIO_PIN_7;
     if (which == 'g') return GPIO_PIN_8;
-    if (which == 'o') return GPIO_PIN_9;
+    if (which == 'r') return GPIO_PIN_9;
     return 0;
 }
 
@@ -92,7 +90,7 @@ static void cmd_prompt(void)
 
 static void bad_cmd(void)
 {
-    usart3_tx_str("\r\nERR: use b/r/g/o + 0/1/t\r\n");
+    usart3_tx_str("\r\nERR: use r/g + 0/1/t\r\n");
     cmd_prompt();
 }
 
@@ -127,7 +125,8 @@ void lab4_main(void)
         {
             char second = c;
 
-            if (led_pin_from_color(first) != 0 && (second == '0' || second == '1' || second == 't'))
+            if (led_pin_from_color(first) != 0 &&
+                (second == '0' || second == '1' || second == 't'))
             {
                 led_apply(first, second);
                 usart3_tx_str("\r\n");
