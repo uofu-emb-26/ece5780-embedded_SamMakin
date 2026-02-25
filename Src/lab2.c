@@ -1,81 +1,81 @@
-#include <stm32f0xx_hal.h>
-#include <assert.h>
+// #include <stm32f0xx_hal.h>
+// #include <assert.h>
 
 
-void lab2_main(void)
-{
-    HAL_Init();// setup hal
+// void lab2_main(void)
+// {
+//     HAL_Init();// setup hal
 
-    // clock enables
-    HAL_RCC_GPIOC_CLK_Enable();
-    HAL_RCC_GPIOA_CLK_Enable();
+//     // clock enables
+//     HAL_RCC_GPIOC_CLK_Enable();
+//     HAL_RCC_GPIOA_CLK_Enable();
 
-        // Configure LED pins
-    GPIO_InitTypeDef led_init = {
-        .Pin   = GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9,
-        .Mode  = GPIO_MODE_OUTPUT_PP,
-        .Pull  = GPIO_NOPULL,
-        .Speed = GPIO_SPEED_FREQ_LOW
-    };
+//         // Configure LED pins
+//     GPIO_InitTypeDef led_init = {
+//         .Pin   = GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9,
+//         .Mode  = GPIO_MODE_OUTPUT_PP,
+//         .Pull  = GPIO_NOPULL,
+//         .Speed = GPIO_SPEED_FREQ_LOW
+//     };
 
-    HAL_GPIO_Init(GPIOC, &led_init);
+//     HAL_GPIO_Init(GPIOC, &led_init);
 
-    // Set green LED HIGH
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);
+//     // Set green LED HIGH
+//     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);
 
-    // Enable peripheral interuprts
-    hal_gpio_init_button_pa0_pulldown();
+//     // Enable peripheral interuprts
+//     hal_gpio_init_button_pa0_pulldown();
 
-    assert((EXTI->IMR  & (1u << 0)) == 0);
-    assert((EXTI->RTSR & (1u << 0)) == 0);
+//     assert((EXTI->IMR  & (1u << 0)) == 0);
+//     assert((EXTI->RTSR & (1u << 0)) == 0);
 
-    hal_exti0_enable_rising();
+//     hal_exti0_enable_rising();
 
-    assert((EXTI->IMR  & (1u << 0)) != 0);
-    assert((EXTI->RTSR & (1u << 0)) != 0);
+//     assert((EXTI->IMR  & (1u << 0)) != 0);
+//     assert((EXTI->RTSR & (1u << 0)) != 0);
 
-    // 2.3
-    uint32_t before = (SYSCFG->EXTICR[0] & 0xFu);
-    assert(before <= 0x7u);   // port selector is in a valid range
+//     // 2.3
+//     uint32_t before = (SYSCFG->EXTICR[0] & 0xFu);
+//     assert(before <= 0x7u);   // port selector is in a valid range
 
-    // Route PA0 to EXTI0
-    hal_syscfg_route_pa0_to_exti0();
+//     // Route PA0 to EXTI0
+//     hal_syscfg_route_pa0_to_exti0();
 
-    assert((SYSCFG->EXTICR[0] & 0xFu) == 0x0u);// Check PA0 -> EXTI0
+//     assert((SYSCFG->EXTICR[0] & 0xFu) == 0x0u);// Check PA0 -> EXTI0
 
 
-    // 2.4
-    NVIC_SetPriority(EXTI0_1_IRQn, 1);
-    NVIC_EnableIRQ(EXTI0_1_IRQn);
+//     // 2.4
+//     NVIC_SetPriority(EXTI0_1_IRQn, 1);
+//     NVIC_EnableIRQ(EXTI0_1_IRQn);
 
-    //2.7 
-    NVIC_SetPriority(SysTick_IRQn, 2);
+//     //2.7 
+//     NVIC_SetPriority(SysTick_IRQn, 2);
 
     
-    while (1)
-        {
-                HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);  // red LED 
-                  HAL_Delay(500);
-        }
+//     while (1)
+//         {
+//                 HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_6);  // red LED 
+//                   HAL_Delay(500);
+//         }
 
 
-}
+// }
 
-void EXTI0_1_IRQHandler(void)
-{
-    // Toggle once right when interrupt starts
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9);
+// void EXTI0_1_IRQHandler(void)
+// {
+//     // Toggle once right when interrupt starts
+//     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9);
 
-    // Long-running delay (bad practice, but for demo)
-    volatile uint32_t i = 0;
-    for (i = 0; i < 1500000u; i++)
-    {
-        __asm volatile ("nop");
-    }
+//     // Long-running delay (bad practice, but for demo)
+//     volatile uint32_t i = 0;
+//     for (i = 0; i < 1500000u; i++)
+//     {
+//         __asm volatile ("nop");
+//     }
 
-    // Toggle again after the delay
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9);
+//     // Toggle again after the delay
+//     HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9);
 
-    // Clear pending flag for EXTI line 0
-    EXTI->PR = (1u << 0);
-}
+//     // Clear pending flag for EXTI line 0
+//     EXTI->PR = (1u << 0);
+// }
