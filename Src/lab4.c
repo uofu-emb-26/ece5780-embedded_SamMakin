@@ -64,9 +64,17 @@ static void leds_init(void)
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
 }
 
-static void led_toggle_test(void)
+static void led_apply(char which, char action)
 {
-    HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8);
+    uint16_t pin = 0;
+
+    if (which == 'r') pin = GPIO_PIN_8;
+    else if (which == 'g') pin = GPIO_PIN_9;
+    else return;
+
+    if (action == '0') HAL_GPIO_WritePin(GPIOC, pin, GPIO_PIN_RESET);
+    else if (action == '1') HAL_GPIO_WritePin(GPIOC, pin, GPIO_PIN_SET);
+    else if (action == 't') HAL_GPIO_TogglePin(GPIOC, pin);
 }
 
 void lab4_main(void)
@@ -77,12 +85,31 @@ void lab4_main(void)
     gpio_usart3_init();
     usart3_init();
 
+    char first = 0;
+
     while (1)
     {
-        if (g_rx_ready)
+        if (!g_rx_ready) continue;
+
+        g_rx_ready = 0;
+        char c = g_rx_char;
+
+        if (c == '\r' || c == '\n') continue;
+
+        if (first == 0)
         {
-            g_rx_ready = 0;
-            led_toggle_test();
+            first = c;
+        }
+        else
+        {
+            char second = c;
+
+            if ((first == 'g' || first == 'r') && (second == '0' || second == '1' || second == 't'))
+            {
+                led_apply(first, second);
+            }
+
+            first = 0;
         }
     }
 }
