@@ -3,18 +3,18 @@
 
 #define UART_BAUD 115200u
 
-static volatile char g_rx_char = 0;
+static volatile char    g_rx_char  = 0;
 static volatile uint8_t g_rx_ready = 0;
 
 static void gpio_usart3_init(void)
 {
     __HAL_RCC_GPIOB_CLK_ENABLE();
 
-    GPIOB->MODER &= ~((3u << (10 * 2)) | (3u << (11 * 2)));
-    GPIOB->MODER |=  ((2u << (10 * 2)) | (2u << (11 * 2)));
+    GPIOB->MODER &= ~((3u << (10u * 2u)) | (3u << (11u * 2u)));
+    GPIOB->MODER |=  ((2u << (10u * 2u)) | (2u << (11u * 2u)));
 
-    GPIOB->AFR[1] &= ~((0xFu << ((10 - 8) * 4)) | (0xFu << ((11 - 8) * 4)));
-    GPIOB->AFR[1] |=  ((4u   << ((10 - 8) * 4)) | (4u   << ((11 - 8) * 4)));
+    GPIOB->AFR[1] &= ~((0xFu << ((10u - 8u) * 4u)) | (0xFu << ((11u - 8u) * 4u)));
+    GPIOB->AFR[1] |=  ((4u   << ((10u - 8u) * 4u)) | (4u   << ((11u - 8u) * 4u)));
 }
 
 static void usart3_init(void)
@@ -47,7 +47,7 @@ void USART3_4_IRQHandler(void)
 {
     if ((USART3->ISR & USART_ISR_RXNE) != 0)
     {
-        g_rx_char = (char)USART3->RDR;
+        g_rx_char  = (char)USART3->RDR;
         g_rx_ready = 1;
     }
 }
@@ -56,20 +56,28 @@ static void leds_init(void)
 {
     __HAL_RCC_GPIOC_CLK_ENABLE();
 
+    GPIOC->MODER &= ~((3u << (6u * 2u)) | (3u << (7u * 2u)) | (3u << (8u * 2u)) | (3u << (9u * 2u)));
+    GPIOC->MODER |=  ((1u << (6u * 2u)) | (1u << (7u * 2u)) | (1u << (8u * 2u)) | (1u << (9u * 2u)));
+
+    GPIOC->AFR[0] &= ~((0xFu << (6u * 4u)) | (0xFu << (7u * 4u)));
+    GPIOC->AFR[1] &= ~((0xFu << ((8u - 8u) * 4u)) | (0xFu << ((9u - 8u) * 4u)));
+
     GPIO_InitTypeDef gpio = {0};
-    gpio.Pin   = GPIO_PIN_8 | GPIO_PIN_9;
+    gpio.Pin   = GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9;
     gpio.Mode  = GPIO_MODE_OUTPUT_PP;
     gpio.Pull  = GPIO_NOPULL;
     gpio.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOC, &gpio);
 
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9, GPIO_PIN_RESET);
 }
 
 static uint16_t led_pin_from_color(char which)
 {
-    if (which == 'g') return GPIO_PIN_8;
-    if (which == 'r') return GPIO_PIN_9;
+    if (which == 'r') return GPIO_PIN_6;
+    if (which == 'b') return GPIO_PIN_7;
+    if (which == 'o') return GPIO_PIN_8;
+    if (which == 'g') return GPIO_PIN_9;
     return 0;
 }
 
@@ -78,19 +86,19 @@ static void led_apply(char which, char action)
     uint16_t pin = led_pin_from_color(which);
     if (pin == 0) return;
 
-    if (action == '0') HAL_GPIO_WritePin(GPIOC, pin, GPIO_PIN_RESET);
+    if (action == '0')      HAL_GPIO_WritePin(GPIOC, pin, GPIO_PIN_RESET);
     else if (action == '1') HAL_GPIO_WritePin(GPIOC, pin, GPIO_PIN_SET);
     else if (action == 't') HAL_GPIO_TogglePin(GPIOC, pin);
 }
 
 static void cmd_prompt(void)
 {
-    usart3_tx_str("CMD? ");
+    usart3_tx_str("\r\nCMD? ");
 }
 
 static void bad_cmd(void)
 {
-    usart3_tx_str("\r\nERR: use r/g + 0/1/t\r\n");
+    usart3_tx_str("\r\nERR: use r/b/o/g + 0/1/2\r\n");
     cmd_prompt();
 }
 
@@ -102,9 +110,10 @@ void lab4_main(void)
     gpio_usart3_init();
     usart3_init();
 
-    char first = 0;
-
+    usart3_tx_str("\r\nReady. r/b/o/g then 0/1/t\r\n");
     cmd_prompt();
+
+    char first = 0;
 
     while (1)
     {
@@ -115,7 +124,7 @@ void lab4_main(void)
 
         if (c == '\r' || c == '\n') continue;
 
-        usart3_tx_char(c);
+        usart3_tx_char(c);  // echo
 
         if (first == 0)
         {
@@ -129,7 +138,6 @@ void lab4_main(void)
                 (second == '0' || second == '1' || second == 't'))
             {
                 led_apply(first, second);
-                usart3_tx_str("\r\n");
                 cmd_prompt();
             }
             else
