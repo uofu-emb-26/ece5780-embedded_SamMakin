@@ -7,6 +7,7 @@ void lab5_main(void)
 {
     //enable clocks
     RCC->APB1ENR |= RCC_APB1ENR_I2C2EN;
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN | RCC_AHBENR_GPIOCEN;
 
     // Say PB11 and PB13 are in alternate fucntion mode not driven by GPIO
     GPIOB->MODER &= ~((3u << (11u * 2u)) | (3u << (13u * 2u)));
@@ -19,7 +20,7 @@ void lab5_main(void)
     GPIOB->AFR[1] &= ~((0xFu << ((11u - 8u) * 4u)) | (0xFu << ((13u - 8u) * 4u)));
     GPIOB->AFR[1] |=  ((0x1u << ((11u - 8u) * 4u)) | (0x1u << ((13u - 8u) * 4u)));
 
-    // This block set the address pin on the gryo high so it responds to the 0x6B address
+    // This block set the address pin on the gryo high so it responds
     GPIOB->MODER &= ~(3u << (14u * 2u));
     GPIOB->MODER |=  (1u << (14u * 2u));  
     GPIOB->OTYPER &= ~(1u << 14u);         
@@ -36,5 +37,5 @@ void lab5_main(void)
 
     // Enable I2C peripheral
     I2C2->CR1 |= I2C_CR1_PE;
-    
+
 }
