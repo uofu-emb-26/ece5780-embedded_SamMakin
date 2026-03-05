@@ -17,4 +17,5 @@ void HAL_RCC_GPIOA_CLK_Enable(void);
 
 void hal_gpio_init_button_pa0_pulldown(void);
 void hal_exti0_enable_rising(void);
+void hal_syscfg_route_pa0_to_exti0(void);
 

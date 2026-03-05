@@ -14,7 +14,7 @@ void Error_Handler(void)
   }
 }
 
-//Clock
+//Clocks
 void HAL_RCC_GPIOC_CLK_Enable (void)
 {
       
