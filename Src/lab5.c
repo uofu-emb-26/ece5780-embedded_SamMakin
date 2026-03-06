@@ -1,199 +1,373 @@
 #include "stm32f0xx.h"
 #include <stdint.h>
 
-#define GYRO_ADDR        0x69u
-#define WHO_AM_I_REG     0x0Fu
-#define EXPECTED_WHO1    0xD3u
-#define EXPECTED_WHO2    0xD4u
+#define IMU_I2C_ADDR       0x69u
 
-#define I2C2_TIMING_100KHZ  0x10420F13u
+#define WHO_REG            0x0Fu
+#define CTRL1_REG          0x20u
+#define XLOW_REG           0xA8u
+#define YLOW_REG           0xAAu
 
-static void leds_off(void)
+#define CTRL1_ENABLE_VAL   0x0Bu
+#define MOTION_LIMIT       500
+
+#define LED_A              6u
+#define LED_B              7u
+#define LED_C              8u
+#define LED_D              9u
+
+
+// basic delay loop
+static void wait_ms(uint32_t t)
 {
-    GPIOC->BSRR = (1u << (6u + 16u)) |
-                  (1u << (7u + 16u)) |
-                  (1u << (8u + 16u)) |
-                  (1u << (9u + 16u));
-}
-
-static void all_leds_on(void)
-{
-    GPIOC->BSRR = (1u << 6u) |
-                  (1u << 7u) |
-                  (1u << 8u) |
-                  (1u << 9u);
-}
-
-static void led_set(uint32_t pin)
-{
-    leds_off();
-    GPIOC->BSRR = (1u << pin);
-}
-
-static void delay_ms(uint32_t ms)
-{
-    for (uint32_t i = 0; i < ms * 800u; i++) {
+    for (uint32_t i = 0; i < (t * 800u); i++) {
         __asm__("nop");
     }
 }
 
-static int wait_txis(void)
+
+// clear all leds
+static void leds_off_all(void)
+{
+    GPIOC->BSRR =
+        (1u << (LED_A + 16u)) |
+        (1u << (LED_B + 16u)) |
+        (1u << (LED_C + 16u)) |
+        (1u << (LED_D + 16u));
+}
+
+
+// write leds using mask
+static void leds_apply(uint32_t mask)
+{
+    leds_off_all();
+    GPIOC->BSRR = mask;
+}
+
+
+// set single led
+static void led_single(uint32_t pin)
+{
+    leds_apply(1u << pin);
+}
+
+
+// set pair leds
+static void led_pair(uint32_t p1, uint32_t p2)
+{
+    leds_apply((1u << p1) | (1u << p2));
+}
+
+
+// turn all leds on
+static void leds_full(void)
+{
+    GPIOC->BSRR =
+        (1u << LED_A) |
+        (1u << LED_B) |
+        (1u << LED_C) |
+        (1u << LED_D);
+}
+
+
+// power on blink
+static void startup_led_flash(void)
+{
+    leds_full();
+    wait_ms(1000);
+    leds_off_all();
+    wait_ms(500);
+}
+
+
+// configure led gpio
+static void led_gpio_init(void)
+{
+    GPIOC->MODER &= ~(
+        (3u << (LED_A * 2u)) |
+        (3u << (LED_B * 2u)) |
+        (3u << (LED_C * 2u)) |
+        (3u << (LED_D * 2u))
+    );
+
+    GPIOC->MODER |= (
+        (1u << (LED_A * 2u)) |
+        (1u << (LED_B * 2u)) |
+        (1u << (LED_C * 2u)) |
+        (1u << (LED_D * 2u))
+    );
+
+    GPIOC->OTYPER &= ~(
+        (1u << LED_A) |
+        (1u << LED_B) |
+        (1u << LED_C) |
+        (1u << LED_D)
+    );
+}
+
+
+// setup pins used for gyro mode
+static void imu_mode_pins(void)
+{
+    // SA0 high -> address select
+    GPIOB->MODER  &= ~(3u << (14u * 2u));
+    GPIOB->MODER  |=  (1u << (14u * 2u));
+    GPIOB->OTYPER &= ~(1u << 14u);
+    GPIOB->ODR    |=  (1u << 14u);
+
+    // enable i2c mode on chip
+    GPIOC->MODER  &= ~(3u << (0u * 2u));
+    GPIOC->MODER  |=  (1u << (0u * 2u));
+    GPIOC->OTYPER &= ~(1u << 0u);
+    GPIOC->ODR    |=  (1u << 0u);
+}
+
+
+// configure pb11 / pb13 for i2c
+static void i2c_pin_setup(void)
+{
+    GPIOB->MODER &= ~((3u << (11u * 2u)) | (3u << (13u * 2u)));
+    GPIOB->MODER |=  ((2u << (11u * 2u)) | (2u << (13u * 2u)));
+
+    GPIOB->OTYPER |= (1u << 11u) | (1u << 13u);
+
+    GPIOB->AFR[1] &= ~((0xFu << 12u) | (0xFu << 20u));
+    GPIOB->AFR[1] |=  ((1u << 12u) | (5u << 20u));
+
+    GPIOB->PUPDR &= ~((3u << (11u * 2u)) | (3u << (13u * 2u)));
+}
+
+
+// reset + enable i2c2 block
+static void i2c2_enable(void)
+{
+    RCC->APB1RSTR |= RCC_APB1RSTR_I2C2RST;
+    RCC->APB1RSTR &= ~RCC_APB1RSTR_I2C2RST;
+
+    I2C2->CR1 = 0;
+    I2C2->CR2 = 0;
+    I2C2->TIMINGR = 0;
+
+    I2C2->CR1 |= I2C_CR1_PE;
+
+    // simple timing setup
+    I2C2->TIMINGR |= (1u << 28);
+    I2C2->TIMINGR |= (0x13u);
+    I2C2->TIMINGR |= (0xFu << 8);
+    I2C2->TIMINGR |= (2u << 16);
+    I2C2->TIMINGR |= (4u << 20);
+
+    I2C2->ICR = I2C_ICR_NACKCF | I2C_ICR_STOPCF;
+}
+
+
+// full hardware init
+static void hw_init_all(void)
+{
+    RCC->AHBENR  |= RCC_AHBENR_GPIOBEN | RCC_AHBENR_GPIOCEN;
+    RCC->APB1ENR |= RCC_APB1ENR_I2C2EN;
+
+    led_gpio_init();
+    leds_off_all();
+
+    i2c_pin_setup();
+    imu_mode_pins();
+    i2c2_enable();
+}
+
+
+// wait until TXIS
+static int wait_tx(void)
 {
     while (1) {
-        uint32_t isr = I2C2->ISR;
+        uint32_t s = I2C2->ISR;
 
-        if (isr & I2C_ISR_NACKF) {
+        if (s & I2C_ISR_NACKF) {
             I2C2->ICR = I2C_ICR_NACKCF;
             I2C2->CR2 |= I2C_CR2_STOP;
             return 0;
         }
 
-        if (isr & I2C_ISR_TXIS) {
+        if (s & I2C_ISR_TXIS) {
             return 1;
         }
     }
 }
 
-static int wait_rxne(void)
+
+// wait RXNE
+static int wait_rx(void)
 {
     while (1) {
-        uint32_t isr = I2C2->ISR;
+        uint32_t s = I2C2->ISR;
 
-        if (isr & I2C_ISR_NACKF) {
+        if (s & I2C_ISR_NACKF) {
             I2C2->ICR = I2C_ICR_NACKCF;
             I2C2->CR2 |= I2C_CR2_STOP;
             return 0;
         }
 
-        if (isr & I2C_ISR_RXNE) {
+        if (s & I2C_ISR_RXNE) {
             return 1;
         }
     }
 }
 
-static void wait_tc(void)
+
+// wait TC flag
+static void wait_done(void)
 {
     while (!(I2C2->ISR & I2C_ISR_TC)) {
     }
 }
 
-static void cr2_setup(uint8_t addr7, uint8_t nbytes, uint8_t read_mode)
+
+// configure CR2 for transaction
+static void i2c_start_cfg(uint8_t addr7, uint8_t bytes, uint8_t rd)
 {
-    I2C2->CR2 &= ~((0x3FFu << 0) |
-                   (0xFFu  << 16) |
-                   I2C_CR2_RD_WRN |
-                   I2C_CR2_AUTOEND |
-                   I2C_CR2_START |
-                   I2C_CR2_STOP);
+    uint32_t r = I2C2->CR2;
 
-    I2C2->CR2 |= ((uint32_t)addr7 << 1);
-    I2C2->CR2 |= ((uint32_t)nbytes << 16);
+    r &= ~((0x3FFu << 0) | (0xFFu << 16) | I2C_CR2_RD_WRN |
+           I2C_CR2_AUTOEND | I2C_CR2_START | I2C_CR2_STOP);
 
-    if (read_mode) {
-        I2C2->CR2 |= I2C_CR2_RD_WRN;
-    }
+    r |= ((uint32_t)addr7 << 1);
+    r |= ((uint32_t)bytes << 16);
+
+    if (rd) r |= I2C_CR2_RD_WRN;
+
+    I2C2->CR2 = r;
 }
 
-static int gyro_read_reg(uint8_t reg, uint8_t *buf, uint8_t len)
+
+// write register to gyro
+static int imu_write(uint8_t reg, uint8_t val)
 {
-    cr2_setup(GYRO_ADDR, 1, 0);
+    i2c_start_cfg(IMU_I2C_ADDR, 2u, 0u);
     I2C2->CR2 |= I2C_CR2_START;
 
-    if (!wait_txis()) return 0;
+    if (!wait_tx()) return 0;
     I2C2->TXDR = reg;
 
-    wait_tc();
+    if (!wait_tx()) return 0;
+    I2C2->TXDR = val;
 
-    cr2_setup(GYRO_ADDR, len, 1);
-    I2C2->CR2 |= I2C_CR2_START;
-
-    for (uint8_t i = 0; i < len; i++) {
-        if (!wait_rxne()) return 0;
-        buf[i] = (uint8_t)I2C2->RXDR;
-    }
-
-    wait_tc();
+    wait_done();
     I2C2->CR2 |= I2C_CR2_STOP;
 
     return 1;
 }
 
+
+// read register block
+static int imu_read(uint8_t reg, uint8_t *buf, uint8_t n)
+{
+    i2c_start_cfg(IMU_I2C_ADDR, 1u, 0u);
+    I2C2->CR2 |= I2C_CR2_START;
+
+    if (!wait_tx()) return 0;
+    I2C2->TXDR = reg;
+
+    wait_done();
+
+    i2c_start_cfg(IMU_I2C_ADDR, n, 1u);
+    I2C2->CR2 |= I2C_CR2_START;
+
+    for (uint8_t i = 0; i < n; i++) {
+        if (!wait_rx()) return 0;
+        buf[i] = (uint8_t)I2C2->RXDR;
+    }
+
+    wait_done();
+    I2C2->CR2 |= I2C_CR2_STOP;
+
+    return 1;
+}
+
+
+// combine low/high bytes
+static int16_t join_bytes(uint8_t lo, uint8_t hi)
+{
+    uint16_t tmp = ((uint16_t)hi << 8) | lo;
+    return (int16_t)tmp;
+}
+
+
+// motion -> led logic
+static void show_motion(int16_t x, int16_t y)
+{
+    if ((x > MOTION_LIMIT) && (y > MOTION_LIMIT))
+        led_pair(LED_A, LED_C);
+
+    else if ((x > MOTION_LIMIT) && (y < -MOTION_LIMIT))
+        led_pair(LED_A, LED_D);
+
+    else if ((x < -MOTION_LIMIT) && (y > MOTION_LIMIT))
+        led_pair(LED_B, LED_C);
+
+    else if ((x < -MOTION_LIMIT) && (y < -MOTION_LIMIT))
+        led_pair(LED_B, LED_D);
+
+    else if (x > MOTION_LIMIT)
+        led_single(LED_A);
+
+    else if (x < -MOTION_LIMIT)
+        led_single(LED_B);
+
+    else if (y > MOTION_LIMIT)
+        led_single(LED_C);
+
+    else if (y < -MOTION_LIMIT)
+        led_single(LED_D);
+
+    else
+        leds_off_all();
+}
+
+
 void lab5_main(void)
 {
-    RCC->AHBENR  |= RCC_AHBENR_GPIOBEN | RCC_AHBENR_GPIOCEN;
-    RCC->APB1ENR |= RCC_APB1ENR_I2C2EN;
+    uint8_t id_val = 0;
+    uint8_t axis_raw[2];
 
-    RCC->APB1RSTR |= RCC_APB1RSTR_I2C2RST;
-    RCC->APB1RSTR &= ~RCC_APB1RSTR_I2C2RST;
+    hw_init_all();
+    startup_led_flash();
 
-    GPIOC->MODER &= ~((3u << (6u * 2u)) |
-                      (3u << (7u * 2u)) |
-                      (3u << (8u * 2u)) |
-                      (3u << (9u * 2u)));
-    GPIOC->MODER |=  ((1u << (6u * 2u)) |
-                      (1u << (7u * 2u)) |
-                      (1u << (8u * 2u)) |
-                      (1u << (9u * 2u)));
-    GPIOC->OTYPER &= ~((1u << 6u) |
-                       (1u << 7u) |
-                       (1u << 8u) |
-                       (1u << 9u));
+    // read id reg
+    if (!imu_read(WHO_REG, &id_val, 1u)) {
+        while (1) {
+            led_single(LED_C);
+            wait_ms(200);
+            leds_off_all();
+            wait_ms(200);
+        }
+    }
 
-    all_leds_on();
-    delay_ms(500);
-    leds_off();
-    delay_ms(250);
+    if (!(id_val == 0xD3u || id_val == 0xD4u)) {
+        while (1) {
+            led_single(LED_D);
+        }
+    }
 
-    GPIOB->MODER &= ~((3u << (11u * 2u)) | (3u << (13u * 2u)));
-    GPIOB->MODER |=  ((2u << (11u * 2u)) | (2u << (13u * 2u)));
-    GPIOB->OTYPER |= (1u << 11u) | (1u << 13u);
+    // enable gyro
+    if (!imu_write(CTRL1_REG, CTRL1_ENABLE_VAL)) {
+        led_single(LED_C);
+        while (1) {}
+    }
 
-    GPIOB->AFR[1] &= ~((0xFu << ((11u - 8u) * 4u)) |
-                       (0xFu << ((13u - 8u) * 4u)));
-    GPIOB->AFR[1] |=  ((1u << ((11u - 8u) * 4u)) |
-                       (1u << ((13u - 8u) * 4u)));
+    while (1) {
 
-    GPIOB->PUPDR &= ~((3u << (11u * 2u)) | (3u << (13u * 2u)));
+        int16_t x_axis = 0;
+        int16_t y_axis = 0;
 
-    GPIOB->MODER &= ~(3u << (14u * 2u));
-    GPIOB->MODER |=  (1u << (14u * 2u));
-    GPIOB->OTYPER &= ~(1u << 14u);
-    GPIOB->ODR |= (1u << 14u);
-
-    GPIOC->MODER &= ~(3u << (0u * 2u));
-    GPIOC->MODER |=  (1u << (0u * 2u));
-    GPIOC->OTYPER &= ~(1u << 0u);
-    GPIOC->ODR |= (1u << 0u);
-
-    I2C2->TIMINGR = I2C2_TIMING_100KHZ;
-    I2C2->CR1 |= I2C_CR1_PE;
-    I2C2->ICR = I2C_ICR_NACKCF | I2C_ICR_STOPCF;
-
-    delay_ms(50);
-
-    {
-        uint8_t who = 0;
-
-        if (!gyro_read_reg(WHO_AM_I_REG, &who, 1)) {
-            while (1) {
-                led_set(8u);
-                delay_ms(200);
-                leds_off();
-                delay_ms(200);
-            }
+        if (imu_read(XLOW_REG, axis_raw, 2u)) {
+            x_axis = join_bytes(axis_raw[0], axis_raw[1]);
         }
 
-        if (who == EXPECTED_WHO1 || who == EXPECTED_WHO2) {
-            while (1) {
-                led_set(6u);
-            }
-        } else {
-            while (1) {
-                led_set(9u);
-                delay_ms(500);
-                leds_off();
-                delay_ms(500);
-            }
+        if (imu_read(YLOW_REG, axis_raw, 2u)) {
+            y_axis = join_bytes(axis_raw[0], axis_raw[1]);
         }
+
+        show_motion(x_axis, y_axis);
+        wait_ms(100);
     }
 }
