@@ -1,6 +1,7 @@
 #include "stm32f0xx.h"
 #include <stdint.h>
 
+static void leds_init(void);
 static void adc_pin_init(void);
 static void adc_init(void);
 
@@ -9,14 +10,42 @@ int lab6_main(void)
     HAL_Init();
     SystemClock_Config();
 
+    leds_init();
     adc_pin_init();
     adc_init();
 
     while (1)
     {
         uint8_t adc_value = (uint8_t)(ADC1->DR & 0xFFu);
-        (void)adc_value;
+
+        if (adc_value > 127)
+        {
+            GPIOC->BSRR = (1u << 6);
+        }
+        else
+        {
+            GPIOC->BSRR = (1u << (6 + 16));
+        }
     }
+}
+
+static void leds_init(void)
+{
+    RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
+
+    GPIOC->MODER &= ~(
+        (3u << (6 * 2)) |
+        (3u << (7 * 2)) |
+        (3u << (8 * 2)) |
+        (3u << (9 * 2))
+    );
+
+    GPIOC->MODER |= (
+        (1u << (6 * 2)) |
+        (1u << (7 * 2)) |
+        (1u << (8 * 2)) |
+        (1u << (9 * 2))
+    );
 }
 
 static void adc_pin_init(void)
