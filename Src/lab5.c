@@ -1,12 +1,17 @@
 #include "stm32f0xx.h"
 #include <stdint.h>
 
+#define LAB_MODE           2u      // 1 = 5.1 WHO_AM_I demo, 2 = 5.2 motion LED demo
+
 #define IMU_I2C_ADDR       0x69u
 
 #define WHO_REG            0x0Fu
 #define CTRL1_REG          0x20u
 #define XLOW_REG           0xA8u
 #define YLOW_REG           0xAAu
+
+#define WHO_OK_A           0xD3u
+#define WHO_OK_B           0xD4u
 
 #define CTRL1_ENABLE_VAL   0x0Bu
 #define MOTION_LIMIT       500
@@ -17,7 +22,6 @@
 #define LED_D              9u
 
 
-// basic delay loop
 static void wait_ms(uint32_t t)
 {
     for (uint32_t i = 0; i < (t * 800u); i++) {
@@ -25,8 +29,6 @@ static void wait_ms(uint32_t t)
     }
 }
 
-
-// clear all leds
 static void leds_off_all(void)
 {
     GPIOC->BSRR =
@@ -36,30 +38,22 @@ static void leds_off_all(void)
         (1u << (LED_D + 16u));
 }
 
-
-// write leds using mask
 static void leds_apply(uint32_t mask)
 {
     leds_off_all();
     GPIOC->BSRR = mask;
 }
 
-
-// set single led
 static void led_single(uint32_t pin)
 {
     leds_apply(1u << pin);
 }
 
-
-// set pair leds
 static void led_pair(uint32_t p1, uint32_t p2)
 {
     leds_apply((1u << p1) | (1u << p2));
 }
 
-
-// turn all leds on
 static void leds_full(void)
 {
     GPIOC->BSRR =
@@ -69,8 +63,6 @@ static void leds_full(void)
         (1u << LED_D);
 }
 
-
-// power on blink
 static void startup_led_flash(void)
 {
     leds_full();
@@ -79,8 +71,6 @@ static void startup_led_flash(void)
     wait_ms(500);
 }
 
-
-// configure led gpio
 static void led_gpio_init(void)
 {
     GPIOC->MODER &= ~(
@@ -105,25 +95,19 @@ static void led_gpio_init(void)
     );
 }
 
-
-// setup pins used for gyro mode
 static void imu_mode_pins(void)
 {
-    // SA0 high -> address select
     GPIOB->MODER  &= ~(3u << (14u * 2u));
     GPIOB->MODER  |=  (1u << (14u * 2u));
     GPIOB->OTYPER &= ~(1u << 14u);
     GPIOB->ODR    |=  (1u << 14u);
 
-    // enable i2c mode on chip
     GPIOC->MODER  &= ~(3u << (0u * 2u));
     GPIOC->MODER  |=  (1u << (0u * 2u));
     GPIOC->OTYPER &= ~(1u << 0u);
     GPIOC->ODR    |=  (1u << 0u);
 }
 
-
-// configure pb11 / pb13 for i2c
 static void i2c_pin_setup(void)
 {
     GPIOB->MODER &= ~((3u << (11u * 2u)) | (3u << (13u * 2u)));
@@ -137,8 +121,6 @@ static void i2c_pin_setup(void)
     GPIOB->PUPDR &= ~((3u << (11u * 2u)) | (3u << (13u * 2u)));
 }
 
-
-// reset + enable i2c2 block
 static void i2c2_enable(void)
 {
     RCC->APB1RSTR |= RCC_APB1RSTR_I2C2RST;
@@ -150,7 +132,6 @@ static void i2c2_enable(void)
 
     I2C2->CR1 |= I2C_CR1_PE;
 
-    // simple timing setup
     I2C2->TIMINGR |= (1u << 28);
     I2C2->TIMINGR |= (0x13u);
     I2C2->TIMINGR |= (0xFu << 8);
@@ -160,8 +141,6 @@ static void i2c2_enable(void)
     I2C2->ICR = I2C_ICR_NACKCF | I2C_ICR_STOPCF;
 }
 
-
-// full hardware init
 static void hw_init_all(void)
 {
     RCC->AHBENR  |= RCC_AHBENR_GPIOBEN | RCC_AHBENR_GPIOCEN;
@@ -175,8 +154,6 @@ static void hw_init_all(void)
     i2c2_enable();
 }
 
-
-// wait until TXIS
 static int wait_tx(void)
 {
     while (1) {
@@ -194,8 +171,6 @@ static int wait_tx(void)
     }
 }
 
-
-// wait RXNE
 static int wait_rx(void)
 {
     while (1) {
@@ -213,33 +188,33 @@ static int wait_rx(void)
     }
 }
 
-
-// wait TC flag
 static void wait_done(void)
 {
     while (!(I2C2->ISR & I2C_ISR_TC)) {
     }
 }
 
-
-// configure CR2 for transaction
 static void i2c_start_cfg(uint8_t addr7, uint8_t bytes, uint8_t rd)
 {
     uint32_t r = I2C2->CR2;
 
-    r &= ~((0x3FFu << 0) | (0xFFu << 16) | I2C_CR2_RD_WRN |
-           I2C_CR2_AUTOEND | I2C_CR2_START | I2C_CR2_STOP);
+    r &= ~((0x3FFu << 0) |
+           (0xFFu << 16) |
+           I2C_CR2_RD_WRN |
+           I2C_CR2_AUTOEND |
+           I2C_CR2_START |
+           I2C_CR2_STOP);
 
     r |= ((uint32_t)addr7 << 1);
     r |= ((uint32_t)bytes << 16);
 
-    if (rd) r |= I2C_CR2_RD_WRN;
+    if (rd) {
+        r |= I2C_CR2_RD_WRN;
+    }
 
     I2C2->CR2 = r;
 }
 
-
-// write register to gyro
 static int imu_write(uint8_t reg, uint8_t val)
 {
     i2c_start_cfg(IMU_I2C_ADDR, 2u, 0u);
@@ -257,8 +232,6 @@ static int imu_write(uint8_t reg, uint8_t val)
     return 1;
 }
 
-
-// read register block
 static int imu_read(uint8_t reg, uint8_t *buf, uint8_t n)
 {
     i2c_start_cfg(IMU_I2C_ADDR, 1u, 0u);
@@ -283,79 +256,101 @@ static int imu_read(uint8_t reg, uint8_t *buf, uint8_t n)
     return 1;
 }
 
-
-// combine low/high bytes
 static int16_t join_bytes(uint8_t lo, uint8_t hi)
 {
     uint16_t tmp = ((uint16_t)hi << 8) | lo;
     return (int16_t)tmp;
 }
 
+static int who_id_ok(uint8_t id_val)
+{
+    if (id_val == WHO_OK_A) return 1;
+    if (id_val == WHO_OK_B) return 1;
+    return 0;
+}
 
-// motion -> led logic
 static void show_motion(int16_t x, int16_t y)
 {
     if ((x > MOTION_LIMIT) && (y > MOTION_LIMIT))
         led_pair(LED_A, LED_C);
-
     else if ((x > MOTION_LIMIT) && (y < -MOTION_LIMIT))
         led_pair(LED_A, LED_D);
-
     else if ((x < -MOTION_LIMIT) && (y > MOTION_LIMIT))
         led_pair(LED_B, LED_C);
-
     else if ((x < -MOTION_LIMIT) && (y < -MOTION_LIMIT))
         led_pair(LED_B, LED_D);
-
     else if (x > MOTION_LIMIT)
         led_single(LED_A);
-
     else if (x < -MOTION_LIMIT)
         led_single(LED_B);
-
     else if (y > MOTION_LIMIT)
         led_single(LED_C);
-
     else if (y < -MOTION_LIMIT)
         led_single(LED_D);
-
     else
         leds_off_all();
 }
 
+static void fail_comm(void)
+{
+    while (1) {
+        led_single(LED_C);
+        wait_ms(200);
+        leds_off_all();
+        wait_ms(200);
+    }
+}
 
-void lab5_main(void)
+static void fail_wrong_id(void)
+{
+    while (1) {
+        led_single(LED_D);
+    }
+}
+
+static void pass_51_demo(void)
+{
+    while (1) {
+        led_pair(LED_A, LED_B);
+        wait_ms(250);
+        leds_off_all();
+        wait_ms(250);
+    }
+}
+
+static void run_lab_51(void)
+{
+    uint8_t id_val = 0;
+
+    if (!imu_read(WHO_REG, &id_val, 1u)) {
+        fail_comm();
+    }
+
+    if (!who_id_ok(id_val)) {
+        fail_wrong_id();
+    }
+
+    pass_51_demo();
+}
+
+static void run_lab_52(void)
 {
     uint8_t id_val = 0;
     uint8_t axis_raw[2];
 
-    hw_init_all();
-    startup_led_flash();
-
-    // read id reg
     if (!imu_read(WHO_REG, &id_val, 1u)) {
-        while (1) {
-            led_single(LED_C);
-            wait_ms(200);
-            leds_off_all();
-            wait_ms(200);
-        }
+        fail_comm();
     }
 
-    if (!(id_val == 0xD3u || id_val == 0xD4u)) {
-        while (1) {
-            led_single(LED_D);
-        }
+    if (!who_id_ok(id_val)) {
+        fail_wrong_id();
     }
 
-    // enable gyro
     if (!imu_write(CTRL1_REG, CTRL1_ENABLE_VAL)) {
-        led_single(LED_C);
-        while (1) {}
+        fail_comm();
     }
 
     while (1) {
-
         int16_t x_axis = 0;
         int16_t y_axis = 0;
 
@@ -369,5 +364,17 @@ void lab5_main(void)
 
         show_motion(x_axis, y_axis);
         wait_ms(100);
+    }
+}
+
+void lab5_main(void)
+{
+    hw_init_all();
+    startup_led_flash();
+
+    if (LAB_MODE == 1u) {
+        run_lab_51();
+    } else {
+        run_lab_52();
     }
 }

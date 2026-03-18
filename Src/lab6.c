@@ -1,0 +1,55 @@
+#include "stm32f0xx.h"
+#include <stdint.h>
+
+static void adc_pin_init(void);
+static void adc_init(void);
+
+int lab6_main(void)
+{
+    HAL_Init();
+    SystemClock_Config();
+
+    adc_pin_init();
+    adc_init();
+
+    while (1)
+    {
+    }
+}
+
+static void adc_pin_init(void)
+{
+    RCC->AHBENR |= RCC_AHBENR_GPIOCEN;
+
+    GPIOC->MODER |= (3u << (0 * 2));
+    GPIOC->PUPDR &= ~(3u << (0 * 2));
+}
+
+static void adc_init(void)
+{
+    RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
+
+    if (ADC1->CR & ADC_CR_ADEN)
+    {
+        ADC1->CR |= ADC_CR_ADDIS;
+        while (ADC1->CR & ADC_CR_ADEN)
+        {
+        }
+    }
+
+    ADC1->CFGR1 = 0;
+    ADC1->CFGR1 |= ADC_CFGR1_CONT;
+    ADC1->CFGR1 |= ADC_CFGR1_RES_1;
+
+    ADC1->CHSELR = ADC_CHSELR_CHSEL10;
+
+    ADC1->CR |= ADC_CR_ADCAL;
+    while (ADC1->CR & ADC_CR_ADCAL)
+    {
+    }
+
+    ADC1->CR |= ADC_CR_ADEN;
+    while ((ADC1->ISR & ADC_ISR_ADRDY) == 0)
+    {
+    }
+}
