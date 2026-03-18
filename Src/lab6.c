@@ -14,6 +14,8 @@ int lab6_main(void)
 
     while (1)
     {
+        uint8_t adc_value = (uint8_t)(ADC1->DR & 0xFFu);
+        (void)adc_value;
     }
 }
 
@@ -52,4 +54,6 @@ static void adc_init(void)
     while ((ADC1->ISR & ADC_ISR_ADRDY) == 0)
     {
     }
+
+    ADC1->CR |= ADC_CR_ADSTART;
 }
