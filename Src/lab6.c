@@ -2,6 +2,8 @@
 #include <stdint.h>
 
 static void leds_init(void);
+static void leds_off(void);
+static void show_value_on_leds(uint8_t value);
 static void adc_pin_init(void);
 static void adc_init(void);
 
@@ -17,15 +19,7 @@ int lab6_main(void)
     while (1)
     {
         uint8_t adc_value = (uint8_t)(ADC1->DR & 0xFFu);
-
-        if (adc_value > 127)
-        {
-            GPIOC->BSRR = (1u << 6);
-        }
-        else
-        {
-            GPIOC->BSRR = (1u << (6 + 16));
-        }
+        show_value_on_leds(adc_value);
     }
 }
 
@@ -46,6 +40,25 @@ static void leds_init(void)
         (1u << (8 * 2)) |
         (1u << (9 * 2))
     );
+}
+
+static void leds_off(void)
+{
+    GPIOC->BSRR =
+        (1u << (6 + 16)) |
+        (1u << (7 + 16)) |
+        (1u << (8 + 16)) |
+        (1u << (9 + 16));
+}
+
+static void show_value_on_leds(uint8_t value)
+{
+    leds_off();
+
+    if (value > 50)  GPIOC->BSRR = (1u << 6);
+    if (value > 100) GPIOC->BSRR = (1u << 7);
+    if (value > 150) GPIOC->BSRR = (1u << 8);
+    if (value > 200) GPIOC->BSRR = (1u << 9);
 }
 
 static void adc_pin_init(void)
