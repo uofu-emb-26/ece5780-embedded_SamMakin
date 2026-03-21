@@ -37,15 +37,16 @@ int lab6_main(void)
 
     while (1)
     {
-        while ((ADC1->ISR & ADC_ISR_EOC) == 0) { }
-
-        uint16_t adc_value = (uint16_t)(ADC1->DR & 0x00FFu);
+        uint16_t adc_value = (uint16_t)(ADC1->DR & 0x0FFFu);
         show_value_on_leds(adc_value);
 
         DAC->DHR8R1 = sine_table[index];
 
         index++;
-        if (index >= 32) index = 0;
+        if (index >= 32)
+        {
+            index = 0;
+        }
 
         delay_ms(1);
     }
@@ -91,10 +92,10 @@ static void show_value_on_leds(uint16_t value)
 {
     leds_off();
 
-    if (value > 50)  GPIOC->BSRR = (1u << 6);
-    if (value > 100) GPIOC->BSRR = (1u << 7);
-    if (value > 150) GPIOC->BSRR = (1u << 8);
-    if (value > 220) GPIOC->BSRR = (1u << 9);
+    if (value > 1000) GPIOC->BSRR = (1u << 6);
+    if (value > 2000) GPIOC->BSRR = (1u << 7);
+    if (value > 3000) GPIOC->BSRR = (1u << 8);
+    if (value > 3800) GPIOC->BSRR = (1u << 9);
 }
 
 static void adc_pin_init(void)
@@ -117,7 +118,7 @@ static void adc_init(void)
 
     ADC1->CFGR1 = 0;
     ADC1->CFGR1 |= ADC_CFGR1_CONT;
-    ADC1->CFGR1 |= ADC_CFGR1_RES_1 | ADC_CFGR1_RES_0;
+    ADC1->CFGR1 &= ~ADC_CFGR1_RES;
 
     ADC1->CHSELR = ADC_CHSELR_CHSEL10;
 
