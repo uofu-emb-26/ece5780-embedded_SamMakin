@@ -5,7 +5,7 @@ static void delay_ms(uint32_t t);
 
 static void leds_init(void);
 static void leds_off(void);
-static void show_value_on_leds(uint8_t value);
+static void show_value_on_leds(uint16_t value);
 
 static void adc_pin_init(void);
 static void adc_init(void);
@@ -37,16 +37,15 @@ int lab6_main(void)
 
     while (1)
     {
-        uint8_t adc_value = (uint8_t)(ADC1->DR & 0xFFu);
+        while ((ADC1->ISR & ADC_ISR_EOC) == 0) { }
+
+        uint16_t adc_value = (uint16_t)(ADC1->DR & 0x00FFu);
         show_value_on_leds(adc_value);
 
         DAC->DHR8R1 = sine_table[index];
 
         index++;
-        if (index >= 32)
-        {
-            index = 0;
-        }
+        if (index >= 32) index = 0;
 
         delay_ms(1);
     }
@@ -56,9 +55,7 @@ static void delay_ms(uint32_t t)
 {
     for (uint32_t j = 0; j < t; j++)
     {
-        for (volatile uint32_t i = 0; i < 8000; i++)
-        {
-        }
+        for (volatile uint32_t i = 0; i < 8000; i++) { }
     }
 }
 
@@ -90,14 +87,14 @@ static void leds_off(void)
         (1u << (9 + 16));
 }
 
-static void show_value_on_leds(uint8_t value)
+static void show_value_on_leds(uint16_t value)
 {
     leds_off();
 
     if (value > 50)  GPIOC->BSRR = (1u << 6);
     if (value > 100) GPIOC->BSRR = (1u << 7);
     if (value > 150) GPIOC->BSRR = (1u << 8);
-    if (value > 200) GPIOC->BSRR = (1u << 9);
+    if (value > 220) GPIOC->BSRR = (1u << 9);
 }
 
 static void adc_pin_init(void)
@@ -112,29 +109,23 @@ static void adc_init(void)
 {
     RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
 
-    if (ADC1->CR & ADC_CR_ADEN)
+    if ((ADC1->CR & ADC_CR_ADEN) != 0)
     {
         ADC1->CR |= ADC_CR_ADDIS;
-        while (ADC1->CR & ADC_CR_ADEN)
-        {
-        }
+        while ((ADC1->CR & ADC_CR_ADEN) != 0) { }
     }
 
     ADC1->CFGR1 = 0;
     ADC1->CFGR1 |= ADC_CFGR1_CONT;
-    ADC1->CFGR1 |= ADC_CFGR1_RES_1;
+    ADC1->CFGR1 |= ADC_CFGR1_RES_1 | ADC_CFGR1_RES_0;
 
     ADC1->CHSELR = ADC_CHSELR_CHSEL10;
 
     ADC1->CR |= ADC_CR_ADCAL;
-    while (ADC1->CR & ADC_CR_ADCAL)
-    {
-    }
+    while ((ADC1->CR & ADC_CR_ADCAL) != 0) { }
 
     ADC1->CR |= ADC_CR_ADEN;
-    while ((ADC1->ISR & ADC_ISR_ADRDY) == 0)
-    {
-    }
+    while ((ADC1->ISR & ADC_ISR_ADRDY) == 0) { }
 
     ADC1->CR |= ADC_CR_ADSTART;
 }
