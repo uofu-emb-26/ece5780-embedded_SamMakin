@@ -87,6 +87,7 @@ int lab7_main(void) {
     LED_init();                             // Initialize LED's
     button_init();                          // Initialize button
     motor_init();                           // Initialize motor code
+    pwm_setDutyCycle(30);
 
     while (1) {
         GPIOC->ODR ^= GPIO_ODR_9;           // Toggle green LED (heartbeat)
@@ -97,6 +98,28 @@ int lab7_main(void) {
 
 void Lab7_SysTick_Handler(void)
 {
-}
+    debouncer = (debouncer << 1);
+    if(GPIOA->IDR & (1 << 0)) {
+        debouncer |= 0x1;
+    }
 
+    if(debouncer == 0x7FFFFFFF) {
+        __disable_irq();
+        switch(target_rpm) {
+            case 80:
+                target_rpm = 50;
+                break;
+            case 50:
+                target_rpm = 81;
+                break;
+            case 0:
+                target_rpm = 80;
+                break;
+            default:
+                target_rpm = 0;
+                break;
+        }
+        __enable_irq();
+    }
+}
 // ----------------------------------------------------------------------------
