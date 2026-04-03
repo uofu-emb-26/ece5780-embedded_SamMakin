@@ -72,7 +72,10 @@ void PendSV_Handler(void)
   */
 void SysTick_Handler(void)
 {
-    HAL_IncTick();
+      HAL_IncTick();
+  #if defined(LAB7)
+      Lab7_SysTick_Handler();
+  #endif
 }
 
 /******************************************************************************/
