@@ -1,7 +1,7 @@
 #include "main.h"
 #include <stm32f0xx_hal.h>
 
-#define ACTIVE_LAB 6
+#define ACTIVE_LAB 7
 
 int main(void)
 {

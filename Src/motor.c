@@ -51,7 +51,13 @@ union byte_split {
 // }
 // Sets up the entire motor drive system
 void motor_init(void) {
-    ///log_init();
+    Kp = 1;
+    Ki = 1;
+    target_rpm = 80;
+    error_integral = 0;
+    duty_cycle = 0;
+    error = 0;
+
     pwm_init();
     encoder_init();
     ADC_init();
@@ -142,19 +148,11 @@ void encoder_init(void) {
 
 // Encoder interrupt to calculate motor speed, also manages PI controller
 void TIM6_DAC_IRQHandler(void) {
-    /* Calculate the motor speed in raw encoder counts
-     * Note the motor speed is signed! Motor can be run in reverse.
-     * Speed is measured by how far the counter moved from center point
-     */
     motor_speed = (TIM3->CNT - 0x7FFF);
-    TIM3->CNT = 0x7FFF; // Reset back to center point
-
-    // Call the PI update function
+    TIM3->CNT = 0x7FFF;
     PI_update();
-
-    TIM6->SR &= ~TIM_SR_UIF;        // Acknowledge the interrupt
+    TIM6->SR &= ~TIM_SR_UIF;
 }
-
 void ADC_init(void) {
 
     // Configure PA1 for ADC input (used for current monitoring)

@@ -20,7 +20,7 @@
 #include "main.h"
 #include <stm32f0xx_hal.h>
 #include <stm32f0xx_it.h>
-
+#include "motor.h"
 /******************************************************************************/
 /*            Cortex-M0 Processor Exceptions Handlers                         */
 /******************************************************************************/

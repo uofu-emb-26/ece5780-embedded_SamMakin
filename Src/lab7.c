@@ -32,8 +32,8 @@ void  button_init(void) {
     // Initialize PA0 for button input
     RCC->AHBENR |= RCC_AHBENR_GPIOAEN;                                          // Enable peripheral clock to GPIOA
     GPIOA->MODER &= ~(GPIO_MODER_MODER0_0 | GPIO_MODER_MODER0_1);               // Set PA0 to input
-    GPIOC->OSPEEDR &= ~(GPIO_OSPEEDR_OSPEEDR0_0 | GPIO_OSPEEDR_OSPEEDR0_1);     // Set to low speed
-    GPIOC->PUPDR |= GPIO_PUPDR_PUPDR0_1;                                        // Set to pull-down
+    GPIOA->OSPEEDR &= ~(GPIO_OSPEEDR_OSPEEDR0_0 | GPIO_OSPEEDR_OSPEEDR0_1);     // Set to low speed
+    GPIOA->PUPDR |= GPIO_PUPDR_PUPDR0_1;                                        // Set to pull-down
 }
 
 /* Called by SysTick Interrupt
@@ -81,18 +81,16 @@ void Lab7_Systick_Callback(void) {
 volatile uint32_t encoder_count = 0;
 
 int lab7_main(void) {
-
-    debouncer = 0;                          // Initialize global variables
-    HAL_Init();                             // Initialize HAL internals
-    LED_init();                             // Initialize LED's
-    button_init();                          // Initialize button
-    motor_init();                           // Initialize motor code
-    pwm_setDutyCycle(30);
+    debouncer = 0;
+    HAL_Init();
+    LED_init();
+    button_init();
+    motor_init();           // sets up PWM, encoder, ADC, PI variables
 
     while (1) {
-        GPIOC->ODR ^= GPIO_ODR_9;           // Toggle green LED (heartbeat)
-        encoder_count = TIM2->CNT;
-        HAL_Delay(128);                      // Delay 1/8 second
+        GPIOC->ODR ^= GPIO_ODR_9;   // heartbeat blink
+        encoder_count = TIM3->CNT;
+        HAL_Delay(128);
     }
 }
 
