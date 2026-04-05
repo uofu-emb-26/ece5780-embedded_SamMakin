@@ -54,10 +54,10 @@ void Lab7_Systick_Callback(void) {
         __disable_irq();
         switch(target_rpm) {
             case 80:
-                target_rpm = 50;
+                target_rpm = 81;
                 break;
             case 50:
-                target_rpm = 81;
+                target_rpm = 50;
                 break;
             case 0:
                 target_rpm = 80;
