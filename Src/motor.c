@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stm32f0xx.h>
 #include "motor.h"
+#include "SEGGER_RTT.h"
 /* -------------------------------------------------------------------------------------------------------------
  *  Global Variable and Type Declarations
  *  -------------------------------------------------------------------------------------------------------------
@@ -26,33 +27,33 @@ union byte_split {
     uint8_t bytes[4];
 };
 
-// void log_init(void) {
-//     SEGGER_RTT_ConfigUpBuffer(0, "", buf0, 1024, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
-//     SEGGER_RTT_ConfigUpBuffer(1, "", buf1, 1024, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
-//     SEGGER_RTT_ConfigUpBuffer(2, "", buf2, 1024, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
-// }
+void log_init(void) {
+    SEGGER_RTT_ConfigUpBuffer(0, "", buf0, 1024, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
+    SEGGER_RTT_ConfigUpBuffer(1, "", buf1, 1024, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
+    SEGGER_RTT_ConfigUpBuffer(2, "", buf2, 1024, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
+}
 
-// void log_data(void) {
-//     // Begin critical section
-//     __disable_irq();
-//     uint32_t duty_cycle_copy = duty_cycle;
-//     int32_t target_rpm_copy = target_rpm;
-//     int32_t motor_speed_copy = motor_speed;
-//     // End critical section
-//     __enable_irq();
+void log_data(void) {
+    // Begin critical section
+    __disable_irq();
+    uint32_t duty_cycle_copy = duty_cycle;
+    int32_t target_rpm_copy = target_rpm;
+    int32_t motor_speed_copy = motor_speed;
+    // End critical section
+    __enable_irq();
 
-//     union byte_split data;
-//     data.uword = duty_cycle_copy;
-//     SEGGER_RTT_Write (0, &data.bytes, 4);
-//     data.word = target_rpm_copy;
-//     SEGGER_RTT_Write (1, &data.bytes, 4);
-//     data.word = motor_speed_copy;
-//     SEGGER_RTT_Write (2, &data.bytes, 4);
-// }
-// Sets up the entire motor drive system
+    union byte_split data;
+    data.uword = duty_cycle_copy;
+    SEGGER_RTT_Write (0, &data.bytes, 4);
+    data.word = target_rpm_copy;
+    SEGGER_RTT_Write (1, &data.bytes, 4);
+    data.word = motor_speed_copy;
+    SEGGER_RTT_Write (2, &data.bytes, 4);
+}
+Sets up the entire motor drive system
 void motor_init(void) {
-    Kp = 1;
-    Ki = 1;
+    Kp = 8;
+    Ki = 3;
     target_rpm = 80;
     error_integral = 0;
     duty_cycle = 0;
@@ -61,6 +62,7 @@ void motor_init(void) {
     pwm_init();
     encoder_init();
     ADC_init();
+    log_init();
 }
 
 // Sets up the PWM and direction signals to drive the H-Bridge
@@ -151,6 +153,7 @@ void TIM6_DAC_IRQHandler(void) {
     motor_speed = (TIM3->CNT - 0x7FFF);
     TIM3->CNT = 0x7FFF;
     PI_update();
+    log_data();
     TIM6->SR &= ~TIM_SR_UIF;
 }
 void ADC_init(void) {
